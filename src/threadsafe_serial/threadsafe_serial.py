@@ -191,6 +191,12 @@ class ThreadSafeSerial:
             logger.info("Serial connection closed.")
 
     @property
+    def in_waiting(self):
+        """Get the number of bytes in the input buffer."""
+        with self.lock:
+            return len(self.input_buffer)
+
+    @property
     def is_open(self):
         """
         Check if the serial port is open and safe to write.
