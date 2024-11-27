@@ -16,6 +16,11 @@ import time
 
 logger = logging.getLogger(__name__)
 
+def truncate_data(data, max_len=25):
+    """Truncate data if it exceeds the maximum length."""
+    if len(data) > max_len:
+        return data[:max_len] + b"..."
+    return data
 
 class ThreadSafeSerial:
     def __init__(
@@ -116,6 +121,8 @@ class ThreadSafeSerial:
             try:
                 if self.serial and self.serial.in_waiting:
                     data = self.serial.read(self.serial.in_waiting)
+                    # log the size in bytes of the data received
+                    logger.debug(f"Received {len(data)} bytes: {truncate_data(data)}", extra={"data": data})
                     with self.lock:
                         self.input_buffer.extend(data)
             except serial.SerialException as e:
@@ -178,7 +185,7 @@ class ThreadSafeSerial:
                 if isinstance(data, str):
                     data = data.encode("utf-8")
                 self.serial.write(data)
-                logger.debug(f"Sent: {data}")
+                logger.debug(f"Sent {len(data)} bytes: {truncate_data(data)}", extra={"data": data})
             except serial.SerialException as e:
                 logger.error(f"Write error: {e}. Attempting to reconnect...")
                 self.handle_disconnection()
