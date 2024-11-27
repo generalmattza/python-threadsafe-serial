@@ -16,7 +16,7 @@ import time
 
 logger = logging.getLogger(__name__)
 
-def truncate_data(data, max_len=25):
+def truncate_data(data, max_len=8):
     """Truncate data if it exceeds the maximum length."""
     if len(data) > max_len:
         return data[:max_len] + b"..."
@@ -165,8 +165,8 @@ class ThreadSafeSerial:
             if idx != -1:
                 # Delimiter found
                 end_idx = idx + len(expected)
-                data = self.input_buffer[:end_idx]
-                del self.input_buffer[:end_idx]
+                data = self.input_buffer[:idx]  # Exclude the delimiter
+                del self.input_buffer[:end_idx]  # Still remove up to the delimiter
                 return bytes(data)
             if max_bytes is not None and len(self.input_buffer) >= max_bytes:
                 # Max bytes reached without finding delimiter
