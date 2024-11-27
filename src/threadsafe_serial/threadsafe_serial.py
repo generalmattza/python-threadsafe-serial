@@ -167,6 +167,9 @@ class ThreadSafeSerial:
                 del self.input_buffer[:max_bytes]
                 return bytes(data)
         return None
+    
+    def readline(self, terminator=b"\r\n"):
+        return self.read_until(terminator)
 
     def write(self, data):
         """Thread-safe write to the serial port."""
@@ -187,6 +190,15 @@ class ThreadSafeSerial:
             self.serial.close()
             logger.info("Serial connection closed.")
 
+    @property
+    def is_open(self):
+        """
+        Check if the serial port is open and safe to write.
+        :return: True if it is safe to write, False otherwise.
+        """
+        with self.lock:
+            return self.serial is not None and self.serial.is_open
+        
     def __enter__(self):
         return self
 

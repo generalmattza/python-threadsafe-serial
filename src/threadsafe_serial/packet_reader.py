@@ -2,22 +2,19 @@ from abc import abstractmethod
 import time
 
 
-class SerialPacketReader:
-    def __init__(self, serial_port):
-        self.serial_port = serial_port
+class PacketReader:
+    def __init__(self, read_callback):
+        self.read_callback = read_callback
 
     @abstractmethod
     def read_packet(self):
         pass
 
 
-class WindowedPacketReader(SerialPacketReader):
-    def __init__(
-        self, serial_port, window_size=10, start_byte=0xA5, end_byte=0x5A, timeout=1.0
-    ):
-        super().__init__(serial_port)
+class WindowedPacketReader(PacketReader):
+    def __init__(self, read_callback, window_size=10, start_byte=0xA5, end_byte=0x5A, timeout=1.0):
+        super().__init__(read_callback)
         self.window_size = window_size
-        self.buffer = bytearray()
         self.start_byte = start_byte
         self.end_byte = end_byte
         self.timeout = timeout
@@ -25,20 +22,24 @@ class WindowedPacketReader(SerialPacketReader):
     def read_packet(self):
         """Read packets using a sliding window."""
         start_time = time.time()
+        buffer = bytearray()
+
         while time.time() - start_time <= self.timeout:
-            if not self.buffer:
-                self.buffer = self.serial_port.read(self.window_size)
-            else:
-                self.buffer = self.buffer[1:] + self.serial_port.read(1)
+            # Use the callback to fetch data
+            data = self.read_callback()
+            if data:
+                buffer.extend(data)
+                if len(buffer) > self.window_size:
+                    buffer.pop(0)  # Keep the buffer size within the window
 
-            if (
-                len(self.buffer) == self.window_size
-                and self.buffer[0] == self.start_byte
-                and self.buffer[-1] == self.end_byte
-            ):
-                return self.buffer[1:-1]
+                # Check if the buffer matches the packet criteria
+                if (
+                    len(buffer) == self.window_size
+                    and buffer[0] == self.start_byte
+                    and buffer[-1] == self.end_byte
+                ):
+                    return buffer[1:-1]  # Return packet data without start/end bytes
         return None
-
 
 def main():
     serial_port = "/dev/ttyACM0"
