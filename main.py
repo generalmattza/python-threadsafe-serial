@@ -10,22 +10,65 @@
 
 import logging
 from logging.config import dictConfig
+import random
+import threading
 
-# Import the load_configs function
-from config_loader import load_configs
+# # Import the load_configs function
+# from config_loader import load_configs
 
-LOGGING_CONFIG_FILEPATH = "config/logging.yaml"
-APP_CONFIG_FILEPATH = "config/application.toml"
+# LOGGING_CONFIG_FILEPATH = "config/logging.yaml"
+# APP_CONFIG_FILEPATH = "config/application.toml"
 
-# Load user configurations using the config_loader module
-configs = load_configs([APP_CONFIG_FILEPATH, LOGGING_CONFIG_FILEPATH])
+# # Load user configurations using the config_loader module
+# configs = load_configs([APP_CONFIG_FILEPATH, LOGGING_CONFIG_FILEPATH])
 
-# Configure logging using the specified logging configuration
-dictConfig(configs["logging"])
+# # Configure logging using the specified logging configuration
+# dictConfig(configs["logging"])
+
+import threading
+from threadsafe_serial.threadsafe_serial import ThreadSafeSerial
+
+
+def send_data(serial_manager):
+    """Send data to the serial port."""
+    while True:
+        data = random.choice(["Hello\n", "World\n", "123\n"])
+        if data.lower() == "exit":
+            serial_manager.stop()
+        else:
+            serial_manager.write(data)
+
+
+def listen_for_data(serial_manager: ThreadSafeSerial):
+    """Listen for data from the serial port."""
+    while True:
+        data = serial_manager.read_until()
+        if data:
+            print(f"Received data: {data}")
 
 
 def main():
-    logging.info(configs["application"])
+    # Create a shared instance of ThreadSafeSerial
+    serial_manager = ThreadSafeSerial(baudrate=115200, search_pattern=r"ACM|USB")
+
+    # Start threads for each module
+    sender_thread = threading.Thread(
+        target=send_data, args=(serial_manager,), daemon=True
+    )
+    receiver_thread = threading.Thread(
+        target=listen_for_data, args=(serial_manager,), daemon=True
+    )
+
+    sender_thread.start()
+    receiver_thread.start()
+
+    try:
+        while True:
+            pass  # Main thread can perform other tasks or wait
+    except KeyboardInterrupt:
+        print("Exiting...")
+    finally:
+        serial_manager.stop()
 
 
 if __name__ == "__main__":
