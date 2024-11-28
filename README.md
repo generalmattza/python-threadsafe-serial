@@ -16,7 +16,7 @@ To install Serial Port Manager, clone the repository and install the dependencie
 ```bash
 git clone https://github.com/davidson-engineering/serial-port-manager.git
 cd serial-port-manager
-pip install -r requirements.txt
+pip install .
 ```
 
 ## Usage
