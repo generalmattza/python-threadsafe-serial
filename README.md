@@ -69,16 +69,7 @@ To run the tests, use the following command:
 pytest tests/
 ```
 
-## Contributing
-
-Contributions are welcome! Please fork the repository and create a pull request with your changes. Ensure that your code adheres to the project's coding standards and includes appropriate tests.
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 
-## Acknowledgements
-
-This project is developed and maintained by Davidson Engineering. We appreciate the contributions from the open-source community.
-
-For more information, visit the [GitHub repository](https://github.com/davidson-engineering/serial-port-manager). 
