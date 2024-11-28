@@ -16,6 +16,11 @@ import time
 
 logger = logging.getLogger(__name__)
 
+def truncate_data(data, max_len=8):
+    """Truncate data if it exceeds the maximum length."""
+    if len(data) > max_len:
+        return data[:max_len] + b"..."
+    return data
 
 class ThreadSafeSerial:
     def __init__(
@@ -116,6 +121,8 @@ class ThreadSafeSerial:
             try:
                 if self.serial and self.serial.in_waiting:
                     data = self.serial.read(self.serial.in_waiting)
+                    # log the size in bytes of the data received
+                    logger.debug(f"Received {len(data)} bytes: {truncate_data(data)}", extra={"data": data})
                     with self.lock:
                         self.input_buffer.extend(data)
             except serial.SerialException as e:
@@ -158,8 +165,8 @@ class ThreadSafeSerial:
             if idx != -1:
                 # Delimiter found
                 end_idx = idx + len(expected)
-                data = self.input_buffer[:end_idx]
-                del self.input_buffer[:end_idx]
+                data = self.input_buffer[:idx]  # Exclude the delimiter
+                del self.input_buffer[:end_idx]  # Still remove up to the delimiter
                 return bytes(data)
             if max_bytes is not None and len(self.input_buffer) >= max_bytes:
                 # Max bytes reached without finding delimiter
@@ -167,6 +174,9 @@ class ThreadSafeSerial:
                 del self.input_buffer[:max_bytes]
                 return bytes(data)
         return None
+    
+    def readline(self, terminator=b"\r\n"):
+        return self.read_until(terminator)
 
     def write(self, data):
         """Thread-safe write to the serial port."""
@@ -175,7 +185,7 @@ class ThreadSafeSerial:
                 if isinstance(data, str):
                     data = data.encode("utf-8")
                 self.serial.write(data)
-                logger.debug(f"Sent: {data}")
+                logger.debug(f"Sent {len(data)} bytes: {truncate_data(data)}", extra={"data": data})
             except serial.SerialException as e:
                 logger.error(f"Write error: {e}. Attempting to reconnect...")
                 self.handle_disconnection()
@@ -187,6 +197,21 @@ class ThreadSafeSerial:
             self.serial.close()
             logger.info("Serial connection closed.")
 
+    @property
+    def in_waiting(self):
+        """Get the number of bytes in the input buffer."""
+        with self.lock:
+            return len(self.input_buffer)
+
+    @property
+    def is_open(self):
+        """
+        Check if the serial port is open and safe to write.
+        :return: True if it is safe to write, False otherwise.
+        """
+        with self.lock:
+            return self.serial is not None and self.serial.is_open
+        
     def __enter__(self):
         return self
 
