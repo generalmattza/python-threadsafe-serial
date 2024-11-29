@@ -1,6 +1,6 @@
 [project]
-name = "project_or_module_name"
-description = "A_short_description"
+name = "python-threadsafe-serial"
+description = "A serial port manager, allowing concurrent connections to a serial port instance"
 
 # If a project, then you can specify version here
 # version = "0.0.1"
