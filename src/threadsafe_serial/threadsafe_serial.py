@@ -31,7 +31,7 @@ class ThreadSafeSerial:
         bytesize=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
-        max_reconnect_attempts=5,
+        max_reconnect_attempts=0,
         search_pattern=r"ACM|USB",
     ):
         """
@@ -143,12 +143,15 @@ class ThreadSafeSerial:
                 self.running = True
                 break
             except serial.SerialException as e:
-                logger.error(f"Reconnection failed: {e}")
+                logger.error(f"Reconnection failed on attempt {self.reconnect_attempts}: {e}")
                 self.reconnect_attempts += 1
-                if 0 < self.max_reconnect_attempts <= self.reconnect_attempts:
-                    logger.error("Max reconnection attempts reached. Exiting.")
-                    raise e
-                time.sleep(self.timeout)
+                if self.max_reconnect_attempts > 0:
+                    if 0 < self.max_reconnect_attempts <= self.reconnect_attempts:
+                        logger.error("Max reconnection attempts reached. Exiting.")
+                        raise e
+                else:
+                    # Pause and retry indefinitely
+                    time.sleep(self.timeout)
 
     def read(self, size=-1):
         """Thread-safe read from the buffer."""
