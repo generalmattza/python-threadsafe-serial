@@ -87,7 +87,7 @@ class ThreadSafeSerial:
                         self.port = detected_devices[0]
                         logger.info(f"Auto-detected device: {self.port}")
                     else:
-                        raise serial.SerialException("No devices detected.")
+                        raise serial.SerialException("No serial devices were detected.")
 
                 self.serial = serial.Serial(
                     port=self.port,
