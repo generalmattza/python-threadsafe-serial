@@ -128,6 +128,9 @@ class ThreadSafeSerial:
             except serial.SerialException as e:
                 logger.error(f"Serial read error: {e}. Attempting to reconnect...")
                 self.handle_disconnection()
+            except OSError as e:
+                logger.error(f"Serial read error: {e}. Attempting to reconnect...")
+                self.handle_disconnection()
 
     def handle_disconnection(self):
         """Handle disconnection by attempting to reconnect."""
