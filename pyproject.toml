@@ -26,7 +26,7 @@ classifiers = [
 ]
 
 dependencies = [
-  "python-config-loader @ git+https://github.com/davidson-engineering/python-config-loader.git",
+  "config-loader @ git+https://github.com/davidson-engineering/python-config-loader.git",
   "pyserial >= 3",
 ]
 
