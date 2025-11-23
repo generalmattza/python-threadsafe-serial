@@ -13,6 +13,7 @@ import threading
 import logging
 import re
 import time
+import queue
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +54,18 @@ class ThreadSafeSerial:
         # Input buffer as a single continuous byte stream
         self.input_buffer = bytearray()
 
+        # Write queue for non-blocking writes (size=1 keeps only latest command)
+        self.write_queue = queue.Queue(maxsize=1)
+
         # Initialize connection and reader thread
         self.connect()
         self.running = True
         self.reader_thread = threading.Thread(target=self._read_serial, daemon=True)
         self.reader_thread.start()
+
+        # Start writer thread for non-blocking writes
+        self.writer_thread = threading.Thread(target=self._write_serial, daemon=True)
+        self.writer_thread.start()
 
     def detect_devices(self):
         """Detect available serial devices."""
@@ -132,6 +140,28 @@ class ThreadSafeSerial:
                 logger.error(f"Serial read error: {e}. Attempting to reconnect...")
                 self.handle_disconnection()
 
+    def _write_serial(self):
+        """Continuously write from the write queue to the serial port."""
+        while self.running:
+            try:
+                # Block until data is available in the queue
+                data = self.write_queue.get(timeout=0.1)
+                if data is None:
+                    continue
+
+                with self.lock:
+                    if isinstance(data, str):
+                        data = data.encode("utf-8")
+                    self.serial.write(data)
+                    logger.debug(f"SENT {len(data)} bytes: {truncate_data(data)}", extra={"data": data})
+            except queue.Empty:
+                continue
+            except serial.SerialException as e:
+                logger.error(f"Write error: {e}. Attempting to reconnect...")
+                self.handle_disconnection()
+            except Exception as e:
+                logger.error(f"Unexpected write error: {e}")
+
     def handle_disconnection(self):
         """Handle disconnection by attempting to reconnect."""
         self.running = False
@@ -185,7 +215,7 @@ class ThreadSafeSerial:
         return self.read_until(terminator)
 
     def write(self, data):
-        """Thread-safe write to the serial port."""
+        """Thread-safe blocking write to the serial port."""
         with self.lock:
             try:
                 if isinstance(data, str):
@@ -195,6 +225,30 @@ class ThreadSafeSerial:
             except serial.SerialException as e:
                 logger.error(f"Write error: {e}. Attempting to reconnect...")
                 self.handle_disconnection()
+
+    def write_latest(self, data):
+        """
+        Non-blocking write that keeps only the latest command.
+        If a command is already queued, it is discarded and replaced with the new one.
+        This is ideal for real-time control where only the most recent state matters.
+        """
+        # Clear any pending writes
+        try:
+            while not self.write_queue.empty():
+                self.write_queue.get_nowait()
+        except queue.Empty:
+            pass
+
+        # Queue the new write
+        try:
+            self.write_queue.put_nowait(data)
+        except queue.Full:
+            # Queue is full, discard oldest and add new
+            try:
+                self.write_queue.get_nowait()
+                self.write_queue.put_nowait(data)
+            except (queue.Empty, queue.Full):
+                pass  # Best effort
 
     def stop(self):
         """Stop the serial communication."""
