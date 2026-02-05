@@ -224,6 +224,9 @@ class ThreadSafeSerial:
     def __exit__(self, exc_type, exc_value, traceback):
         self.stop()
 
+    def close(self):
+        self.stop()
+
 
 def main():
     # Example usage of ThreadSafeSerial with context manager
